@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Recordings</title>
+
+    <!-- Sidebar ve layout için ortak stil -->
+    <link rel="stylesheet" href="app.css?v=5" />
+
+    <!-- Backend adresi -->
+    <script>const BASE_URL = "http://localhost:8080";</script>
+
+    <!-- Sayfaya özel minik stiller -->
+    <style>
+        body{font-family:Arial,sans-serif;background:#f7fafc;margin:0}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        label{display:block;margin:8px 0 6px}
+        input,select,textarea,button{padding:10px;border:1px solid #e5e7eb;border-radius:8px}
+        button{background:#1d4ed8;color:#fff;border:none;cursor:pointer}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{border-bottom:1px solid #eee;padding:10px;text-align:left}
+        video{width:100%;max-height:280px;background:#000;border-radius:10px}
+        .ghost{background:#f1f5f9;color:#111827;border:none}
+        .small{font-size:12px;color:#6b7280}
+        /* app.css içindeki .card ile uyumlu; içerik alanında kutular */
+        .page { display: grid; gap: 16px; padding: 0; }
+    </style>
+</head>
+<body>
+
+<!-- Bu içerik sidebar.js tarafından sağdaki .content alanına taşınır -->
+<div class="page">
+    <div class="card">
+        <h2>Recordings</h2>
+        <p class="small">Bu sayfada kayıtlara dair liste/işlemler olacak.</p>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Yeni Kayıt (metadata)</h3>
+            <label>Oda</label><select id="room"></select>
+            <label>Kaynak</label><select id="source"></select>
+            <label>Doktor</label><input id="doctor" placeholder="doktor1"/>
+            <label>Hasta</label><input id="patient" placeholder="hasta1"/>
+            <label>Başlık</label><input id="title" placeholder="Örn: Laparoskopi başlangıç"/>
+            <button onclick="create()">Kaydı Oluştur</button>
+            <div id="status" class="small"></div>
+        </div>
+
+        <div class="card">
+            <h3>Kayıtlar</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="ghost" onclick="loadAll()">Tümü</button>
+                <input id="filterDoc" placeholder="doktor filtre" style="width:180px;"/>
+                <button class="ghost" onclick="byDoc()">Doktora göre</button>
+                <input id="filterPat" placeholder="hasta filtre" style="width:180px;"/>
+                <button class="ghost" onclick="byPat()">Hastaya göre</button>
+            </div>
+
+            <table>
+                <thead><tr><th>ID</th><th>Başlık</th><th>Doktor</th><th>Hasta</th><th>Tarih</th></tr></thead>
+                <tbody id="rows"></tbody>
+            </table>
+
+            <div class="card" style="margin-top:12px;">
+                <h4>Seçilen Kaydı Oynat</h4>
+                <video id="player" controls></video>
+                <div class="small">Listeden bir satıra tıklayın.</div>
+            </div>
+
+            <div class="card" style="margin-top:12px;">
+                <h4>Anotasyonlar</h4>
+                <div id="alist" class="small">Kayıt seçilmedi.</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                    <input id="an_text" placeholder="Not..." style="flex:1;"/>
+                    <input id="an_sec" placeholder="ofset(s)" style="width:120px;"/>
+                    <button class="ghost" onclick="addAnn()">Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sayfaya özel JS -->
+<script>
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const roomSel = document.getElementById('room');
+    const srcSel  = document.getElementById('source');
+    const player  = document.getElementById('player');
+    let currentList = [], currentId = null;
+
+    function loadRooms(){
+      fetch(`${BASE_URL}/or/rooms`).then(r=>r.json()).then(list=>{
+        roomSel.innerHTML='';
+        list.forEach(x=>{
+          const o=document.createElement('option');
+          o.value=x.id; o.textContent=x.name;
+          roomSel.appendChild(o);
+        });
+      });
+    }
+    function loadSources(){
+      fetch(`${BASE_URL}/or/sources`).then(r=>r.json()).then(list=>{
+        srcSel.innerHTML='';
+        list.forEach(x=>{
+          const o=document.createElement('option');
+          o.value=x.id; o.textContent=x.name+(x.online?'':' (offline)');
+          srcSel.appendChild(o);
+        });
+      });
+    }
+
+    function trHtml(r){
+      return `<tr onclick="play(${r.id})" style="cursor:pointer">
+        <td>${r.id}</td><td>${r.title||'-'}</td>
+        <td>${r.doctor||'-'}</td><td>${r.patient||'-'}</td>
+        <td>${r.datetime||'-'}</td></tr>`;
+    }
+    function render(list){
+      currentList=list||[];
+      const tb=document.getElementById('rows');
+      tb.innerHTML='';
+      currentList.forEach(r=>tb.innerHTML+=trHtml(r));
+    }
+    function play(id){
+      currentId=id;
+      const rec=currentList.find(x=>x.id===id);
+      if(rec && rec.url){ player.src=rec.url; player.load(); }
+      loadAnnotations();
+    }
+    function loadAnnotations(){
+      const box=document.getElementById('alist');
+      if(!currentId){ box.textContent='Kayıt seçilmedi.'; return; }
+      fetch(`${BASE_URL}/recordings/${currentId}/annotations`).then(r=>r.json()).then(list=>{
+        if(!list.length){ box.textContent='Anotasyon yok.'; return; }
+        box.innerHTML='<ul>'+list.map(a=>
+          `<li>[${a.datetime}] ${a.author||'-'}: ${a.text}${a.offsetSec!=null?(' (+'+a.offsetSec+'s)'):''}</li>`
+        ).join('')+'</ul>';
+      });
+    }
+    function addAnn(){
+      if(!currentId){ alert('Önce bir kayıt seçin.'); return; }
+      const author = user?.username || 'admin';
+      const text = document.getElementById('an_text').value.trim();
+      const offsetSec = document.getElementById('an_sec').value ? Number(document.getElementById('an_sec').value) : null;
+      if(!text){ return; }
+      fetch(`${BASE_URL}/recordings/${currentId}/annotations`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({author,text,offsetSec})
+      }).then(()=>{
+        document.getElementById('an_text').value='';
+        document.getElementById('an_sec').value='';
+        loadAnnotations();
+      });
+    }
+
+    function create(){
+      const body={
+        roomId:Number(roomSel.value),
+        sourceId:Number(srcSel.value),
+        doctor: document.getElementById('doctor').value.trim() || user?.username || 'doktor1',
+        patient: document.getElementById('patient').value.trim(),
+        title: document.getElementById('title').value.trim()
+      };
+      fetch(`${BASE_URL}/recordings`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      })
+      .then(r=>r.json())
+      .then(()=>{
+        document.getElementById('status').textContent='Kayıt eklendi.';
+        loadAll();
+      });
+    }
+
+    function loadAll(){ fetch(`${BASE_URL}/recordings`).then(r=>r.json()).then(render); }
+    function byDoc(){
+      const u=document.getElementById('filterDoc').value.trim(); if(!u) return;
+      fetch(`${BASE_URL}/recordings/doctor/${encodeURIComponent(u)}`).then(r=>r.json()).then(render);
+    }
+    function byPat(){
+      const u=document.getElementById('filterPat').value.trim(); if(!u) return;
+      fetch(`${BASE_URL}/recordings/patient/${encodeURIComponent(u)}`).then(r=>r.json()).then(render);
+    }
+
+    // Sayfa açıldığında yüklemeler
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadRooms(); loadSources(); loadAll();
+    });
+</script>
+
+<!-- DİKKAT: Bu iki satır sidebar için zorunlu -->
+<script src="sidebar.js?v=6"></script>
+<script>initSidebar && initSidebar('recordings');</script>
+</body>
+</html>

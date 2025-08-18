@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Doktor Paneli</title>
+  <link rel="stylesheet" href="app.css?v=7" />
+  <script>const BASE_URL="http://localhost:8080";</script>
+  <style>
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    input,select,textarea,button{padding:10px;border:1px solid #e5e7eb;border-radius:8px}
+    button{background:#1d4ed8;color:#fff;border:none;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left}
+    .ghost{background:#f1f5f9;color:#111827;border:none}
+    .small{font-size:12px;color:#6b7280}
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>Doktor Paneli</h2>
+  <p class="small">TC ile hasta geçmişi, randevu görüntüleme/oluşturma.</p>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Hasta Geçmişi (TC ile)</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input id="tc" placeholder="TC No (örn: 12345678901)" style="flex:1;"/>
+      <button class="ghost" onclick="loadHistory()">Getir</button>
+    </div>
+    <table>
+      <thead><tr><th>Tarih</th><th>Tanı</th><th>Not</th><th>Tetkikler</th></tr></thead>
+      <tbody id="histRows"></tbody>
+    </table>
+    <div class="small" id="histStatus"></div>
+  </div>
+
+  <div class="card">
+    <h3>Randevularım</h3>
+    <div class="small">Bugün ve geçmiş/gelecek tüm randevular</div>
+    <table>
+      <thead><tr><th>Tarih</th><th>Hasta</th><th>Neden</th><th>Durum</th></tr></thead>
+      <tbody id="apptRows"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Randevu Oluştur</h3>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <input id="puser" placeholder="Hasta kullanıcı adı (örn: hasta1)" style="width:220px;"/>
+    <input id="dt" type="datetime-local" style="width:220px;"/>
+    <input id="reason" placeholder="Neden" style="flex:1;"/>
+    <button onclick="createAppt()">Oluştur</button>
+  </div>
+  <div class="small" id="apptStatus"></div>
+</div>
+
+<script>
+  const me = JSON.parse(localStorage.getItem('user')||'{}');
+
+  function loadHistory(){
+    const tc = document.getElementById('tc').value.trim();
+    const rows = document.getElementById('histRows');
+    const st = document.getElementById('histStatus');
+    rows.innerHTML=''; st.textContent='Yükleniyor...';
+    fetch(`${BASE_URL}/records/patient/tc/${encodeURIComponent(tc)}`)
+      .then(r=>r.json())
+      .then(list=>{
+        if(!list.length){ st.textContent='Kayıt bulunamadı.'; return; }
+        st.textContent = `${list.length} kayıt bulundu.`;
+        list.forEach(it=>{
+          rows.innerHTML += `<tr><td>${it.datetime||'-'}</td><td>${it.diagnosis||'-'}</td><td>${it.notes||'-'}</td><td>${it.labs||'-'}</td></tr>`;
+        });
+      })
+      .catch(()=>{ st.textContent='Sunucuya ulaşılamadı'; });
+  }
+
+  function loadMyAppts(){
+    const rows = document.getElementById('apptRows');
+    rows.innerHTML='';
+    fetch(`${BASE_URL}/appointments/doctor/${encodeURIComponent(me.username)}`)
+      .then(r=>r.json())
+      .then(list=>{
+        list.forEach(a=>{
+          rows.innerHTML += `<tr><td>${a.datetime||'-'}</td><td>${a.patientUsername}</td><td>${a.reason||'-'}</td><td>${a.status||'-'}</td></tr>`;
+        });
+      });
+  }
+
+  function createAppt(){
+    const body = {
+      doctorUsername: me.username,
+      patientUsername: document.getElementById('puser').value.trim(),
+      datetime: document.getElementById('dt').value,
+      reason: document.getElementById('reason').value.trim()
+    };
+    const st = document.getElementById('apptStatus');
+    st.textContent='Kaydediliyor...';
+    fetch(`${BASE_URL}/appointments`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+      .then(r=>r.json()).then(()=>{ st.textContent='Randevu oluşturuldu.'; loadMyAppts(); });
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{ loadMyAppts(); });
+</script>
+
+<script src="sidebar.js?v=7"></script>
+<script>initSidebar('doctor');</script>
+</body>
+</html>

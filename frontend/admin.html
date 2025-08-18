@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Paneli</title>
+
+  <!-- Genel stiller -->
+  <link rel="stylesheet" href="app.css?v=2" />
+
+  <!-- Backend adresi: backend'i 8081'de çalıştırıyorsan burayı 8081 yap -->
+  <script>const BASE_URL = "http://localhost:8080";</script>
+
+  <!-- Bu sayfaya küçük bir görünüm düzeni -->
+  <style>
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+    .btn { display:inline-block; padding:10px 12px; border-radius:10px; background:#2563eb; color:#fff; text-decoration:none; }
+    .btn:hover { filter: brightness(0.95); }
+    .muted { color:#6b7280; font-size:14px; margin-top:4px; }
+    .kpi { display:flex; gap:12px; flex-wrap:wrap; }
+    .kpi .card { min-width: 220px; }
+  </style>
+</head>
+<body>
+
+<!-- Buradaki içerik, sidebar.js tarafından sağdaki "content" alanına taşınır -->
+<div class="card">
+  <h2>Admin Paneli</h2>
+  <div id="hello" class="muted">Yükleniyor…</div>
+
+  <div class="kpi" style="margin-top:16px">
+    <div class="card">
+      <strong>Toplam Kullanıcı</strong>
+      <div class="muted">Admin • Doktor • Hasta</div>
+    </div>
+    <div class="card">
+      <strong>Bugünkü Randevular</strong>
+      <div class="muted">Örnek: 0</div>
+    </div>
+    <div class="card">
+      <strong>Aktif Operasyon Odası</strong>
+      <div class="muted">Örnek: 0</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Hızlı İşlemler</h3>
+  <div class="grid">
+    <a class="btn" href="or.html">OR Router</a>
+    <a class="btn" href="sources.html">Sources</a>
+    <a class="btn" href="presets.html">Presets</a>
+    <a class="btn" href="recordings.html">Recordings</a>
+    <a class="btn" href="audit.html">Audit Log</a>
+    <a class="btn" href="logout.html">Çıkış Yap</a>
+  </div>
+</div>
+
+<!-- Basit selamlama -->
+<script>
+  (function(){
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      const el = document.getElementById('hello');
+      if (u && el) el.textContent = `Merhaba @${u.username} • rolün: ${u.role}`;
+    } catch(e){}
+  })();
+</script>
+
+<!-- DİKKAT: Bu iki satır en sonda olmalı -->
+<script src="sidebar.js?v=2"></script>
+<script>initSidebar('admin');</script>
+</body>
+</html>

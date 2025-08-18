@@ -1,0 +1,35 @@
+<!DOCTYPE html><html lang="tr"><head>
+  <meta charset="UTF-8"><title>Audit Log</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:24px;background:#f7fafc}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left}
+    .ghost{background:#f1f5f9;color:#111827;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+  </style></head><body>
+<script>const BASE_URL="http://localhost:8080";</script>
+<header>
+  <h2>Audit Log</h2>
+  <div>
+    <button class="ghost" onclick="location.href='or.html'">OR Router</button>
+    <button class="ghost" onclick="location.href='admin.html'">Admin</button>
+  </div>
+</header>
+<div class="card">
+  <table><thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Aksiyon</th><th>Detay</th></tr></thead><tbody id="rows"></tbody></table>
+</div>
+<script>
+  function load(){
+    fetch(`${BASE_URL}/audit`).then(r=>r.json()).then(list=>{
+      const tb=document.getElementById('rows'); tb.innerHTML='';
+      list.forEach(a=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${a.datetime}</td><td>${a.actor}</td><td>${a.action}</td><td>${a.details}</td>`;
+        tb.appendChild(tr);
+      });
+    });
+  }
+  load();
+</script>
+</body></html>

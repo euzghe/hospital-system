@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8"><title>Çıkış</title></head>
+<body>
+<script>
+    try { localStorage.removeItem('user'); sessionStorage.clear(); } catch(e){}
+    // login'e dönerken auto-redirect’i kapatmak için işaret
+    location.replace('login.html?logout=1');
+</script>
+</body>
+</html>

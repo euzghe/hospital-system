@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hasta Paneli</title>
+  <link rel="stylesheet" href="app.css?v=7" />
+  <script>const BASE_URL="http://localhost:8080";</script>
+  <style>
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    input,select,textarea,button{padding:10px;border:1px solid #e5e7eb;border-radius:8px}
+    button{background:#1d4ed8;color:#fff;border:none;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left}
+    .ghost{background:#f1f5f9;color:#111827;border:none}
+    .small{font-size:12px;color:#6b7280}
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>Hasta Paneli</h2>
+  <p class="small">Randevu oluştur, randevularını ve geçmişini gör.</p>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Randevu Oluştur</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="docList" style="width:220px;"></select>
+      <input id="dt" type="datetime-local" style="width:220px;"/>
+      <input id="reason" placeholder="Neden" style="flex:1;"/>
+      <button onclick="createAppt()">Oluştur</button>
+    </div>
+    <div class="small" id="apptStatus"></div>
+  </div>
+
+  <div class="card">
+    <h3>Randevularım</h3>
+    <table>
+      <thead><tr><th>Tarih</th><th>Doktor</th><th>Neden</th><th>Durum</th></tr></thead>
+      <tbody id="apptRows"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Geçmişim</h3>
+  <table>
+    <thead><tr><th>Tarih</th><th>Tanı</th><th>Not</th><th>Tetkikler</th></tr></thead>
+    <tbody id="histRows"></tbody>
+  </table>
+</div>
+
+<script>
+  const me = JSON.parse(localStorage.getItem('user')||'{}');
+
+  function loadDoctors(){
+    const sel = document.getElementById('docList');
+    sel.innerHTML = '';
+    fetch(`${BASE_URL}/users/doctors`).then(r=>r.json()).then(list=>{
+      list.forEach(d=>{
+        const o=document.createElement('option');
+        o.value=d.username; o.textContent=d.fullName?`${d.fullName} (@${d.username})`:`@${d.username}`;
+        sel.appendChild(o);
+      });
+    });
+  }
+
+  function createAppt(){
+    const body = {
+      doctorUsername: document.getElementById('docList').value,
+      patientUsername: me.username,
+      datetime: document.getElementById('dt').value,
+      reason: document.getElementById('reason').value.trim()
+    };
+    const st = document.getElementById('apptStatus');
+    st.textContent='Kaydediliyor...';
+    fetch(`${BASE_URL}/appointments`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+      .then(r=>r.json()).then(()=>{ st.textContent='Randevu oluşturuldu.'; loadMyAppts(); });
+  }
+
+  function loadMyAppts(){
+    const rows = document.getElementById('apptRows');
+    rows.innerHTML='';
+    fetch(`${BASE_URL}/appointments/patient/${encodeURIComponent(me.username)}`)
+      .then(r=>r.json()).then(list=>{
+        list.forEach(a=>{
+          rows.innerHTML += `<tr><td>${a.datetime||'-'}</td><td>${a.doctorUsername}</td><td>${a.reason||'-'}</td><td>${a.status||'-'}</td></tr>`;
+        });
+      });
+  }
+
+  function loadMyHistory(){
+    const rows = document.getElementById('histRows');
+    rows.innerHTML='';
+    fetch(`${BASE_URL}/records/patient/${encodeURIComponent(me.username)}`)
+      .then(r=>r.json()).then(list=>{
+        if(!list.length){ rows.innerHTML = '<tr><td colspan="4">Kayıt bulunamadı.</td></tr>'; return; }
+        list.forEach(it=>{
+          rows.innerHTML += `<tr><td>${it.datetime||'-'}</td><td>${it.diagnosis||'-'}</td><td>${it.notes||'-'}</td><td>${it.labs||'-'}</td></tr>`;
+        });
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    loadDoctors(); loadMyAppts(); loadMyHistory();
+  });
+</script>
+
+<script src="sidebar.js?v=7"></script>
+<script>initSidebar('patient');</script>
+</body>
+</html>

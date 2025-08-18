@@ -1,0 +1,14 @@
+.DS_Store
+.idea/
+*.iml
+out/
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+logs/
+*.gz
+*.env
+src/main/resources/application.properties
+src/main/resources/application-local.properties
+node_modules/
+__pycache__/

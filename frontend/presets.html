@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="tr"><head>
+  <meta charset="UTF-8"><title>Presets</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:24px;background:#f7fafc}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    label{display:block;margin:8px 0 6px}
+    select,input,button{padding:10px;border:1px solid #e5e7eb;border-radius:8px}
+    button{background:#1d4ed8;color:#fff;border:none;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left}
+    .ghost{background:#f1f5f9;color:#111827;border:none}
+  </style></head><body>
+<script>const BASE_URL="http://localhost:8080";</script>
+<header>
+  <h2>Yönlendirme Presetleri</h2>
+  <div>
+    <button class="ghost" onclick="location.href='or.html'">OR Router</button>
+    <button class="ghost" onclick="location.href='admin.html'">Admin</button>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <h3>Yeni Preset Oluştur</h3>
+    <label>Preset Adı</label>
+    <input id="pname" placeholder="Sabah-Setup">
+    <div id="mappings"></div>
+    <button onclick="create()">Preset Kaydet</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card">
+    <h3>Presetler</h3>
+    <table><thead><tr><th>ID</th><th>Ad</th><th>Tarih</th><th>İşlem</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+</div>
+
+<script>
+  let rooms=[],sources=[];
+  function loadBase(){
+    Promise.all([fetch(`${BASE_URL}/or/rooms`).then(r=>r.json()),
+                 fetch(`${BASE_URL}/or/sources`).then(r=>r.json()),
+                 fetch(`${BASE_URL}/presets`).then(r=>r.json())])
+    .then(([rs,ss,ps])=>{
+      rooms=rs; sources=ss; renderMappingForm(); renderPresets(ps);
+    });
+  }
+  function renderMappingForm(){
+    const div=document.getElementById('mappings'); div.innerHTML='';
+    rooms.forEach(r=>{
+      const wrap=document.createElement('div'); wrap.style.margin='8px 0';
+      const sel=document.createElement('select'); sel.id='room_'+r.id;
+      sources.forEach(s=>{
+        const o=document.createElement('option'); o.value=s.id; o.textContent=s.name+(s.online?'':' (offline)'); sel.appendChild(o);
+      });
+      wrap.innerHTML=`<label>${r.name}</label>`; wrap.appendChild(sel); div.appendChild(wrap);
+    });
+  }
+  function renderPresets(list){
+    const tb=document.getElementById('rows'); tb.innerHTML='';
+    list.forEach(p=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${p.id}</td><td>${p.name}</td><td>${p.datetime||''}</td>
+        <td><button onclick="apply(${p.id})">Uygula</button></td>`;
+      tb.appendChild(tr);
+    });
+  }
+  function create(){
+    const name=document.getElementById('pname').value.trim(); if(!name){alert('Ad gerekli');return;}
+    const mapping={}; rooms.forEach(r=>{ mapping[r.id]=Number(document.getElementById('room_'+r.id).value); });
+    fetch(`${BASE_URL}/presets?actor=${encodeURIComponent((JSON.parse(localStorage.getItem('user')||'{}').username)||'admin')}`,{
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, mapping})})
+    .then(r=>r.json()).then(()=>{ document.getElementById('status').textContent='Preset kaydedildi.'; loadBase(); });
+  }
+  function apply(id){
+    const actor=(JSON.parse(localStorage.getItem('user')||'{}').username)||'admin';
+    fetch(`${BASE_URL}/presets/${id}/apply?actor=${encodeURIComponent(actor)}`, {method:'POST'}).then(()=>alert('Preset uygulandı'));
+  }
+  loadBase();
+</script>
+</body></html>
