@@ -17,8 +17,18 @@ public class User {
     @Column(nullable=false, length=16)
     private String role; // admin | doctor | patient
 
+    // Eklenen alanlar:
+    @Column(length=64)
+    private String firstName;
+
+    @Column(length=64)
+    private String lastName;
+
+    @Column(length=64)
+    private String clinic; // doktor ise, hangi klinikte çalıştığı bilgisi
+
     @Column(length=120)
-    private String fullName;
+    private String fullName; // Aslında `firstName` ve `lastName` ile birleştirilebilirdi.
 
     @Column(length=11)
     private String tcNo; // hasta ise
@@ -37,6 +47,16 @@ public class User {
     public void setPassword(String password) { this.password = password; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    // Yeni eklenen metotlar
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getClinic() { return clinic; }
+    public void setClinic(String clinic) { this.clinic = clinic; }
+
+    // Mevcut metotlar
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getTcNo() { return tcNo; }

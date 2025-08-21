@@ -4,109 +4,286 @@
   <meta charset="UTF-8" />
   <title>Hasta Paneli</title>
   <link rel="stylesheet" href="app.css?v=7" />
-  <script>const BASE_URL="http://localhost:8080";</script>
   <style>
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    input,select,textarea,button{padding:10px;border:1px solid #e5e7eb;border-radius:8px}
-    button{background:#1d4ed8;color:#fff;border:none;cursor:pointer}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:left}
-    .ghost{background:#f1f5f9;color:#111827;border:none}
-    .small{font-size:12px;color:#6b7280}
+    /* Düzenli ve okunabilir CSS kodları */
+    body { font-family: sans-serif; padding: 0; margin: 0; background-color: #f3f4f6; }
+    .main-content { padding: 20px; flex-grow: 1; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    input, select, textarea, button { padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
+    button { background: #1d4ed8; color: #fff; border: none; cursor: pointer; transition: background-color 0.2s; }
+    button:hover { background-color: #3b82f6; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+    .ghost { background: #f1f5f9; color: #111827; border: none; }
+    .small { font-size: 12px; color: #6b7280; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      padding: 24px;
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
-<div class="card">
-  <h2>Hasta Paneli</h2>
-  <p class="small">Randevu oluştur, randevularını ve geçmişini gör.</p>
-</div>
 
-<div class="grid">
-  <div class="card">
-    <h3>Randevu Oluştur</h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <select id="docList" style="width:220px;"></select>
-      <input id="dt" type="datetime-local" style="width:220px;"/>
-      <input id="reason" placeholder="Neden" style="flex:1;"/>
-      <button onclick="createAppt()">Oluştur</button>
+<!-- Uygulama Düzenini Belirleyen Ana Kapsayıcı -->
+<div style="display: flex; height: 100vh;">
+  <!-- Sidebar -->
+  <div style="width: 250px; padding: 20px; background: #111827; color: white;">
+    <h2 style="margin-top: 0;">Mini NuCLeUS</h2>
+    <div style="font-size: 14px; margin-top: -10px; color: #9ca3af;">@hasta1 • patient</div>
+    <ul style="list-style: none; padding: 0; margin-top: 20px;">
+      <li style="margin-bottom: 10px;"><a href="#" style="text-decoration: none; color: white; background: #1d4ed8; padding: 10px; display: block; border-radius: 8px;">Hasta Paneli</a></li>
+      <li style="margin-bottom: 10px;"><a href="#" style="text-decoration: none; color: white; padding: 10px; display: block; border-radius: 8px;">Recordings</a></li>
+    </ul>
+    <button style="position: absolute; bottom: 20px; left: 20px; width: 210px; background: #dc2626;">Çıkış</button>
+  </div>
+
+  <!-- Ana İçerik -->
+  <div class="main-content">
+
+    <!-- Randevu Oluşturma Kartı -->
+    <div class="card">
+      <h3>Randevu Oluştur</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="clinicSel" style="min-width:200px">
+          <option value="">Poliklinik seçin…</option>
+        </select>
+
+        <select id="doctorSel" style="min-width:220px" disabled>
+          <option value="">Önce poliklinik seçin</option>
+        </select>
+
+        <input id="dt" type="datetime-local" style="width:220px;"/>
+        <input id="reason" placeholder="Neden" style="flex:1;"/>
+        <button id="btnCreate">Oluştur</button>
+      </div>
+      <div class="small" id="apptStatus"></div>
     </div>
-    <div class="small" id="apptStatus"></div>
-  </div>
 
-  <div class="card">
-    <h3>Randevularım</h3>
-    <table>
-      <thead><tr><th>Tarih</th><th>Doktor</th><th>Neden</th><th>Durum</th></tr></thead>
-      <tbody id="apptRows"></tbody>
-    </table>
-  </div>
-</div>
+    <!-- Randevularım Kartı -->
+    <div class="card">
+      <h3>Randevularım</h3>
+      <table>
+        <thead><tr><th>Tarih</th><th>Doktor</th><th>Neden</th><th>Durum</th></tr></thead>
+        <tbody id="apptRows"></tbody>
+      </table>
+    </div>
 
-<div class="card">
-  <h3>Geçmişim</h3>
-  <table>
-    <thead><tr><th>Tarih</th><th>Tanı</th><th>Not</th><th>Tetkikler</th></tr></thead>
-    <tbody id="histRows"></tbody>
-  </table>
+    <!-- Geçmişim Kartı -->
+    <div class="card">
+      <h3>Geçmişim</h3>
+      <table>
+        <thead><tr><th>Tarih</th><th>Tanı</th><th>Not</th><th>Tetkikler</th></tr></thead>
+        <tbody id="histRows"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
-  const me = JSON.parse(localStorage.getItem('user')||'{}');
+  // Backend sunucusunun adresi
+  const BASE_URL = window.BASE_URL || "http://localhost:8080";
+  // localStorage'dan kullanıcı bilgilerini daha güvenli bir şekilde al
+  let me = {};
+  try {
+      const userString = localStorage.getItem('user');
+      if (userString) {
+          me = JSON.parse(userString);
+      }
+  } catch(e) {
+      console.error("Local storage'dan kullanıcı bilgisi alınamadı:", e);
+  }
+  if (!me || !me.username) {
+      console.log("Kullanıcı bilgisi bulunamadı.");
+      // window.location.href = 'login.html'; // Yorum satırı, şimdilik yönlendirmeye gerek yok.
+  }
 
-  function loadDoctors(){
-    const sel = document.getElementById('docList');
-    sel.innerHTML = '';
-    fetch(`${BASE_URL}/users/doctors`).then(r=>r.json()).then(list=>{
-      list.forEach(d=>{
-        const o=document.createElement('option');
-        o.value=d.username; o.textContent=d.fullName?`${d.fullName} (@${d.username})`:`@${d.username}`;
-        sel.appendChild(o);
+  // HTML elementlerini değişkenlere atama
+  const clinicSel = document.getElementById('clinicSel');
+  const doctorSel = document.getElementById('doctorSel');
+  const dtInput = document.getElementById('dt');
+  const reasonInp = document.getElementById('reason');
+  const createBtn = document.getElementById('btnCreate');
+  const apptStatus = document.getElementById('apptStatus');
+
+  /**
+   * Backend'den poliklinik listesini (branşları) alır ve seçim kutusuna ekler.
+   */
+  async function loadClinics() {
+    apptStatus.textContent = 'Poliklinikler yükleniyor...';
+    try {
+      const res = await fetch(`${BASE_URL}/clinics`);
+      if (!res.ok) throw new Error(`HTTP hatası: ${res.status}`);
+      const list = await res.json();
+      clinicSel.innerHTML = '<option value="">Poliklinik seçin…</option>';
+      if (Array.isArray(list) && list.length > 0) {
+        list.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c.name;
+          o.textContent = c.name;
+          clinicSel.appendChild(o);
+        });
+      }
+      apptStatus.textContent = '';
+    } catch (e) {
+      console.error("Poliklinik yükleme hatası:", e);
+      apptStatus.textContent = 'Poliklinikler alınamadı. Backend\'i veya API adresini kontrol edin.';
+    }
+  }
+
+  /**
+   * Seçilen polikliniğe göre doktor listesini alır ve seçim kutusuna ekler.
+   */
+  async function onClinicChange() {
+    doctorSel.disabled = true;
+    doctorSel.innerHTML = '<option value="">Doktorlar yükleniyor…</option>';
+    const clinic = clinicSel.value;
+    if (!clinic) {
+      doctorSel.innerHTML = '<option value="">Önce poliklinik seçin</option>';
+      return;
+    }
+    try {
+      const res = await fetch(`${BASE_URL}/clinics/${encodeURIComponent(clinic)}/doctors`);
+      const list = await res.json();
+      doctorSel.innerHTML = '<option value="">Doktor seçin…</option>';
+      list.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.username;
+        o.textContent = d.fullName ? `${d.fullName} (@${d.username})` : `@${d.username}`;
+        doctorSel.appendChild(o);
       });
-    });
+      doctorSel.disabled = false;
+    } catch (e) {
+      console.error("Doktor yükleme hatası:", e);
+      doctorSel.innerHTML = '<option value="">Doktorlar alınamadı. Backend\'i kontrol edin.</option>';
+    }
   }
 
-  function createAppt(){
-    const body = {
-      doctorUsername: document.getElementById('docList').value,
-      patientUsername: me.username,
-      datetime: document.getElementById('dt').value,
-      reason: document.getElementById('reason').value.trim()
-    };
-    const st = document.getElementById('apptStatus');
-    st.textContent='Kaydediliyor...';
-    fetch(`${BASE_URL}/appointments`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
-      .then(r=>r.json()).then(()=>{ st.textContent='Randevu oluşturuldu.'; loadMyAppts(); });
+  /**
+   * Randevu oluşturma işlemini backend'e gönderir.
+   */
+  async function createAppointment() {
+    if (!me || !me.username) {
+        apptStatus.textContent = 'Lütfen önce oturum açın.';
+        return;
+    }
+    const doctorUsername = doctorSel.value;
+    const clinic = clinicSel.value;
+    const datetime = dtInput.value;
+    const reason = reasonInp.value.trim();
+
+    if (!clinic || !doctorUsername || !datetime) {
+      apptStatus.textContent = 'Lütfen poliklinik, doktor ve tarih seçin.';
+      return;
+    }
+    apptStatus.textContent = 'Kaydediliyor...';
+    try {
+      const body = {
+        patientUsername: me.username,
+        doctorUsername,
+        clinic,
+        datetime,
+        reason
+      };
+      const res = await fetch(`${BASE_URL}/appointments`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const j = await res.json();
+      if (res.ok) {
+        apptStatus.textContent = `Randevu oluşturuldu (#${j.id}).`;
+        reasonInp.value = '';
+        loadMyAppts();
+      } else {
+        apptStatus.textContent = j.message || 'Kayıt başarısız';
+      }
+    } catch (e) {
+      console.error("Randevu oluşturma hatası:", e);
+      apptStatus.textContent = 'Sunucuya ulaşılamadı';
+    }
   }
 
-  function loadMyAppts(){
+  /**
+   * Hastanın mevcut randevularını yükler ve tabloya ekler.
+   */
+  function loadMyAppts() {
     const rows = document.getElementById('apptRows');
-    rows.innerHTML='';
+    rows.innerHTML = '<tr><td colspan="4">Randevular yükleniyor...</td></tr>';
+    if (!me || !me.username) {
+        rows.innerHTML = '<tr><td colspan="4">Randevuları görüntülemek için oturum açın.</td></tr>';
+        return;
+    }
     fetch(`${BASE_URL}/appointments/patient/${encodeURIComponent(me.username)}`)
-      .then(r=>r.json()).then(list=>{
-        list.forEach(a=>{
-          rows.innerHTML += `<tr><td>${a.datetime||'-'}</td><td>${a.doctorUsername}</td><td>${a.reason||'-'}</td><td>${a.status||'-'}</td></tr>`;
-        });
+      .then(r => r.json())
+      .then(list => {
+        rows.innerHTML = '';
+        if (Array.isArray(list) && list.length > 0) {
+            list.forEach(a => {
+              rows.innerHTML += `<tr><td>${a.datetime || '-'}</td><td>${a.doctorUsername}</td><td>${a.reason || '-'}</td><td>${a.status || '-'}</td></tr>`;
+            });
+        } else {
+            rows.innerHTML = '<tr><td colspan="4">Randevu bulunamadı.</td></tr>';
+        }
+      })
+      .catch(e => {
+          console.error("Randevu yükleme hatası:", e);
+          rows.innerHTML = '<tr><td colspan="4">Randevular alınamadı.</td></tr>';
       });
   }
 
-  function loadMyHistory(){
+  /**
+   * Hastanın geçmiş kayıtlarını yükler ve tabloya ekler.
+   */
+  function loadMyHistory() {
     const rows = document.getElementById('histRows');
-    rows.innerHTML='';
+    rows.innerHTML = '<tr><td colspan="4">Geçmiş yükleniyor...</td></tr>';
+    if (!me || !me.username) {
+        rows.innerHTML = '<tr><td colspan="4">Geçmişi görüntülemek için oturum açın.</td></tr>';
+        return;
+    }
     fetch(`${BASE_URL}/records/patient/${encodeURIComponent(me.username)}`)
-      .then(r=>r.json()).then(list=>{
-        if(!list.length){ rows.innerHTML = '<tr><td colspan="4">Kayıt bulunamadı.</td></tr>'; return; }
-        list.forEach(it=>{
-          rows.innerHTML += `<tr><td>${it.datetime||'-'}</td><td>${it.diagnosis||'-'}</td><td>${it.notes||'-'}</td><td>${it.labs||'-'}</td></tr>`;
-        });
+      .then(r => r.json())
+      .then(list => {
+        rows.innerHTML = '';
+        if (Array.isArray(list) && list.length > 0) {
+            list.forEach(it => {
+              rows.innerHTML += `<tr><td>${it.datetime || '-'}</td><td>${it.diagnosis || '-'}</td><td>${it.notes || '-'}</td><td>${it.labs || '-'}</td></tr>`;
+            });
+        } else {
+            rows.innerHTML = '<tr><td colspan="4">Kayıt bulunamadı.</td></tr>';
+        }
+      })
+      .catch(e => {
+          console.error("Geçmiş yükleme hatası:", e);
+          rows.innerHTML = '<tr><td colspan="4">Geçmiş alınamadı.</td></tr>';
       });
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    loadDoctors(); loadMyAppts(); loadMyHistory();
+  // Sayfa yüklendiğinde varsayılan tarihi ayarlar.
+  (function setDefaultDate(){
+    const d = new Date(Date.now()+2*3600*1000);
+    d.setMinutes( Math.round(d.getMinutes()/5)*5 );
+    const iso = d.toISOString().slice(0,16);
+    dtInput.value = iso;
+  })();
+
+  // Olay dinleyicilerini (event listeners) bağlama
+  clinicSel.addEventListener('change', onClinicChange);
+  createBtn.addEventListener('click', createAppointment);
+
+  // KRİTİK DÜZELTME: loadClinics() fonksiyonunu doğrudan çağırıyoruz.
+  loadClinics();
+
+  // Diğer kısımları DOMContentLoaded olayı ile yüklüyoruz.
+  document.addEventListener('DOMContentLoaded', () => {
+    if (me && me.username) {
+        loadMyAppts();
+        loadMyHistory();
+    }
   });
 </script>
-
-<script src="sidebar.js?v=7"></script>
-<script>initSidebar('patient');</script>
 </body>
 </html>

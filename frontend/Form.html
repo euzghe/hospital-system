@@ -1,0 +1,25 @@
+<div class="card">
+  <h3>Randevu Al</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div>
+      <label>Poliklinik</label>
+      <select id="clinic"></select>
+    </div>
+    <div>
+      <label>Doktor</label>
+      <select id="doctor" disabled>
+        <option>Önce poliklinik seçiniz</option>
+      </select>
+    </div>
+    <div>
+      <label>Tarih & Saat</label>
+      <input type="datetime-local" id="dt">
+    </div>
+    <div>
+      <label>Neden</label>
+      <input id="reason" placeholder="Muayene / Kontrol">
+    </div>
+  </div>
+  <button id="createBtn" style="margin-top:10px">Randevuyu Oluştur</button>
+  <div id="apptMsg" class="small" style="margin-top:6px"></div>
+</div>

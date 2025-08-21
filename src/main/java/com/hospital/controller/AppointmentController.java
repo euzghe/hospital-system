@@ -1,45 +1,107 @@
 package com.hospital.controller;
 
 import com.hospital.model.Appointment;
+import com.hospital.model.PatientRecord;
 import com.hospital.repo.AppointmentRepository;
+import com.hospital.repo.DoctorRepository;
+import com.hospital.repo.PatientRecordRepository;
 import org.springframework.web.bind.annotation.*;
-import java.util.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @CrossOrigin(origins = "*")
-@RequestMapping("/appointments")
 public class AppointmentController {
 
-    private final AppointmentRepository repo;
+    private final AppointmentRepository apptRepo;
+    private final PatientRecordRepository recordRepo;
+    private final DoctorRepository doctorRepo;
 
-    public AppointmentController(AppointmentRepository repo) {
-        this.repo = repo;
+    public AppointmentController(AppointmentRepository apptRepo,
+                                 PatientRecordRepository recordRepo,
+                                 DoctorRepository doctorRepo) {
+        this.apptRepo = apptRepo;
+        this.recordRepo = recordRepo;
+        this.doctorRepo = doctorRepo;
     }
 
-    @PostMapping
-    public Appointment create(@RequestBody Appointment req){
-        if (req.getStatus()==null || req.getStatus().isBlank()) req.setStatus("scheduled");
-        if (req.getCreatedAt()==null || req.getCreatedAt().isBlank())
-            req.setCreatedAt(java.time.LocalDateTime.now().withNano(0).toString());
-        return repo.save(req);
+    // --- CREATE ---
+    @PostMapping("/appointments")
+    public Appointment create(@RequestBody Appointment a) {
+        // Klinik boş ise doktorun branşıyla doldur
+        if (a.getClinic() == null || a.getClinic().isBlank()) {
+            doctorRepo.findByUsername(a.getDoctorUsername())
+                    .ifPresent(d -> a.setClinic(d.getSpecialty()));
+        }
+        if (a.getStatus() == null || a.getStatus().isBlank()) {
+            a.setStatus("scheduled");
+        }
+        if (a.getCreatedAt() == null || a.getCreatedAt().isBlank()) {
+            a.setCreatedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")));
+        }
+        return apptRepo.save(a);
     }
 
-    @GetMapping("/patient/{username}")
-    public List<Appointment> byPatient(@PathVariable String username){
-        return repo.findByPatientUsernameOrderByDatetimeDesc(username);
+    // --- LISTS ---
+    @GetMapping("/appointments/doctor/{username}")
+    public List<Appointment> byDoctor(@PathVariable String username) {
+        return apptRepo.findByDoctorUsernameOrderByDatetimeDesc(username);
     }
 
-    @GetMapping("/doctor/{username}")
-    public List<Appointment> byDoctor(@PathVariable String username){
-        return repo.findByDoctorUsernameOrderByDatetimeDesc(username);
+    @GetMapping("/appointments/doctor/{username}/today")
+    public List<Appointment> todayForDoctor(@PathVariable String username) {
+        String prefix = LocalDate.now().toString(); // YYYY-MM-DD
+        return apptRepo.findTodayForDoctor(username, prefix);
     }
 
-    @PutMapping("/{id}/status")
-    public Map<String,String> updateStatus(@PathVariable Long id, @RequestBody Map<String,String> body){
-        return repo.findById(id).map(a -> {
-            a.setStatus(body.getOrDefault("status","scheduled"));
-            repo.save(a);
-            return Map.of("status","ok");
-        }).orElse(Map.of("status","error","message","Randevu bulunamadı"));
+    @GetMapping("/appointments/patient/{username}")
+    public List<Appointment> byPatient(@PathVariable String username) {
+        return apptRepo.findByPatientUsernameOrderByDatetimeDesc(username);
+    }
+
+    // --- COMPLETE VISIT ---
+    public static class CompletePayload {
+        public String diagnosis;
+        public String findings;
+        public String labs;
+        public String notes;
+    }
+
+    @PostMapping("/appointments/{id}/complete")
+    public Map<String,Object> complete(@PathVariable Long id,
+                                       @RequestBody CompletePayload body) {
+        Map<String,Object> res = new HashMap<>();
+        var opt = apptRepo.findById(id);
+        if (opt.isEmpty()) {
+            res.put("status","error");
+            res.put("message","Appointment not found");
+            return res;
+        }
+        var a = opt.get();
+
+        // hasta geçmişi kaydı
+        PatientRecord r = new PatientRecord();
+        r.setDoctorUsername(a.getDoctorUsername());
+        r.setPatientUsername(a.getPatientUsername());
+        r.setDatetime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")));
+        r.setDiagnosis(body.diagnosis);
+        r.setFindings(body.findings);
+        r.setLabs(body.labs);
+        r.setNotes(body.notes);
+        r.setCreatedAt(r.getDatetime());
+        recordRepo.save(r);
+
+        // randevuyu kapat
+        a.setStatus("done");
+        apptRepo.save(a);
+
+        res.put("status","ok");
+        res.put("recordId", r.getId());
+        return res;
     }
 }
