@@ -32,12 +32,13 @@
   <!-- Sidebar -->
   <div style="width: 250px; padding: 20px; background: #111827; color: white;">
     <h2 style="margin-top: 0;">Mini NuCLeUS</h2>
-    <div style="font-size: 14px; margin-top: -10px; color: #9ca3af;">@hasta1 • patient</div>
+    <div style="font-size: 14px; margin-top: -10px; color: #9ca3af;" id="patientUsernameDisplay">@hasta1 • patient</div>
     <ul style="list-style: none; padding: 0; margin-top: 20px;">
       <li style="margin-bottom: 10px;"><a href="#" style="text-decoration: none; color: white; background: #1d4ed8; padding: 10px; display: block; border-radius: 8px;">Hasta Paneli</a></li>
       <li style="margin-bottom: 10px;"><a href="#" style="text-decoration: none; color: white; padding: 10px; display: block; border-radius: 8px;">Recordings</a></li>
     </ul>
-    <button style="position: absolute; bottom: 20px; left: 20px; width: 210px; background: #dc2626;">Çıkış</button>
+    <!-- Çıkış butonuna bir id ekledik -->
+    <button id="logoutButton" style="position: absolute; bottom: 20px; left: 20px; width: 210px; background: #dc2626;">Çıkış</button>
   </div>
 
   <!-- Ana İçerik -->
@@ -107,6 +108,8 @@
   const reasonInp = document.getElementById('reason');
   const createBtn = document.getElementById('btnCreate');
   const apptStatus = document.getElementById('apptStatus');
+  // Yeni: Çıkış butonunu seçme
+  const logoutButton = document.getElementById('logoutButton');
 
   /**
    * Backend'den poliklinik listesini (branşları) alır ve seçim kutusuna ekler.
@@ -274,12 +277,25 @@
   clinicSel.addEventListener('change', onClinicChange);
   createBtn.addEventListener('click', createAppointment);
 
+  // Çıkış butonu işlevi
+  logoutButton.addEventListener('click', () => {
+    // localStorage'dan kullanıcı verilerini sil
+    localStorage.removeItem('user');
+    // Login sayfasına yönlendir
+    window.location.href = '/';
+  });
+
   // KRİTİK DÜZELTME: loadClinics() fonksiyonunu doğrudan çağırıyoruz.
   loadClinics();
 
   // Diğer kısımları DOMContentLoaded olayı ile yüklüyoruz.
   document.addEventListener('DOMContentLoaded', () => {
     if (me && me.username) {
+        // Kullanıcı adını ekrana yansıt
+        const displayUsername = document.getElementById('patientUsernameDisplay');
+        if (displayUsername) {
+          displayUsername.textContent = `@${me.username} • patient`;
+        }
         loadMyAppts();
         loadMyHistory();
     }
