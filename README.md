@@ -38,10 +38,8 @@ Bir IDE (IntelliJ IDEA, VS Code vb.)
 
 Projeyi GitHub'dan yerel makinenize indirin:
 
-git clone https://github.com/KULLANICI_ADINIZ/hospital-system.git
+git clone https://github.com/eugzhe/hospital-system.git
 cd hospital-system
-
-Not: KULLANICI_ADINIZ kısmını kendi GitHub kullanıcı adınızla değiştirin.
 
 3. Backend'i Çalıştırma
 
